@@ -27,11 +27,24 @@ class Discriminator(nn.Module):
     def __init__(self, ngpu=0):
         super(Discriminator, self).__init__()
         self.ngpu = ngpu
-
+        self.model = nn.Sequential(
+            nn.Conv2d(3, 64, 4, 2, 1, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(64, 128, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(128, 256, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(256, 512, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(512, 1, 4, 1, 0, bias=False),
+            nn.Sigmoid()
+        )
 
     def forward(self, input):
-        pass
-        #return self.model(input)
+        return self.model(input)
     
 
 
@@ -61,20 +74,76 @@ class GenGAN():
 
 
     def train(self, n_epochs=20):
-        pass
+        # Set up optimizers
+        optimizerD = optim.Adam(self.netD.parameters(), lr=0.0002, betas=(0.5, 0.999))
+        optimizerG = optim.Adam(self.netG.parameters(), lr=0.0002, betas=(0.5, 0.999))
+        
+        criterion = nn.BCELoss()  # Loss function
+        
+        # Move models to GPU if available
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.netG.to(device)
+        self.netD.to(device)
+
+        # Training loop
+        for epoch in range(n_epochs):
+            for i, data in enumerate(self.dataloader):
+                
+                ############################
+                # (1) Update Discriminator
+                ###########################
+                self.netD.zero_grad()
+                
+                # Train with real images
+                real_images = data[1].to(device)  # Get real images from dataloader
+                batch_size = real_images.size(0)
+                label = torch.full((batch_size,), self.real_label, device=device)
+                
+                output = self.netD(real_images).view(-1)
+                errD_real = criterion(output, label)
+                errD_real.backward()
+                
+                # Train with fake images
+                noise = torch.randn(batch_size, Skeleton.reduced_dim, 1, 1, device=device)
+                fake_images = self.netG(noise)
+                label.fill_(self.fake_label)
+                
+                output = self.netD(fake_images.detach()).view(-1)
+                errD_fake = criterion(output, label)
+                errD_fake.backward()
+                optimizerD.step()
+                
+                ############################
+                # (2) Update Generator
+                ###########################
+                self.netG.zero_grad()
+                label.fill_(self.real_label)  # Fake labels are real for generator cost
+                
+                output = self.netD(fake_images).view(-1)
+                errG = criterion(output, label)
+                errG.backward()
+                optimizerG.step()
+                
+                # Logging and printing
+                print(f'[{epoch}/{n_epochs}][{i}/{len(self.dataloader)}] '
+                      f'Loss_D: {errD_real.item() + errD_fake.item():.4f} '
+                      f'Loss_G: {errG.item():.4f}')
+            
+            # Save the generator model after each epoch
+            torch.save(self.netG, self.filename)
+            print(f'Saved model after epoch {epoch+1}/{n_epochs} to {self.filename}')
 
 
 
 
-    def generate(self, ske):           # TP-TODO
+    def generate(self, ske):
         """ generator of image from skeleton """
-        pass
-        # ske_t = torch.from_numpy( ske.__array__(reduced=True).flatten() )
-        # ske_t = ske_t.to(torch.float32)
-        # ske_t = ske_t.reshape(1,Skeleton.reduced_dim,1,1) # ske.reshape(1,Skeleton.full_dim,1,1)
-        # normalized_output = self.netG(ske_t)
-        # res = self.dataset.tensor2image(normalized_output[0])
-        # return res
+        ske_t = torch.from_numpy( ske.__array__(reduced=True).flatten() )
+        ske_t = ske_t.to(torch.float32)
+        ske_t = ske_t.reshape(1,Skeleton.reduced_dim,1,1) # ske.reshape(1,Skeleton.full_dim,1,1)
+        normalized_output = self.netG(ske_t)
+        res = self.dataset.tensor2image(normalized_output[0])
+        return res
 
 
 
@@ -86,7 +155,7 @@ if __name__ == '__main__':
         if len(sys.argv) > 2:
             force = sys.argv[2].lower() == "true"
     else:
-        filename = "tp/dance/data/taichi1.mp4"
+        filename = "data/taichi1.mp4"
     print("GenGAN: Current Working Directory=", os.getcwd())
     print("GenGAN: Filename=", filename)
 
@@ -96,7 +165,7 @@ if __name__ == '__main__':
     if True:    # train or load
         # Train
         gen = GenGAN(targetVideoSke, False)
-        gen.train(4) #5) #200)
+        gen.train(20) #5) #200)
     else:
         gen = GenGAN(targetVideoSke, loadFromFile=True)    # load from file        
 
