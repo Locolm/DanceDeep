@@ -75,8 +75,8 @@ class GenGAN():
 
     def train(self, n_epochs=20):
         # Set up optimizers
-        optimizerD = optim.Adam(self.netD.parameters(), lr=0.0002, betas=(0.5, 0.999))
-        optimizerG = optim.Adam(self.netG.parameters(), lr=0.0002, betas=(0.5, 0.999))
+        optimizerD = optim.Adam(self.netD.parameters(), lr=0.005, betas=(0.5, 0.999))
+        optimizerG = optim.Adam(self.netG.parameters(), lr=0.005, betas=(0.5, 0.999))
         
         criterion = nn.BCELoss()  # Loss function
         
@@ -138,10 +138,21 @@ class GenGAN():
 
     def generate(self, ske):
         """ generator of image from skeleton """
-        ske_t = torch.from_numpy( ske.__array__(reduced=True).flatten() )
+        # Get the same device that the model is on
+        device = next(self.netG.parameters()).device
+        
+        # Convert skeleton to tensor and move to correct device
+        ske_t = torch.from_numpy(ske.__array__(reduced=True).flatten())
         ske_t = ske_t.to(torch.float32)
-        ske_t = ske_t.reshape(1,Skeleton.reduced_dim,1,1) # ske.reshape(1,Skeleton.full_dim,1,1)
-        normalized_output = self.netG(ske_t)
+        ske_t = ske_t.reshape(1, Skeleton.reduced_dim, 1, 1)
+        ske_t = ske_t.to(device)  # Move input tensor to same device as model
+        
+        # Generate image
+        with torch.no_grad():  # Add this for inference
+            normalized_output = self.netG(ske_t)
+            # Move output back to CPU for further processing
+            normalized_output = normalized_output.cpu()
+        
         res = self.dataset.tensor2image(normalized_output[0])
         return res
 
