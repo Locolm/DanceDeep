@@ -75,8 +75,8 @@ class GenGAN():
 
     def train(self, n_epochs=20):
         # Set up optimizers
-        optimizerD = optim.Adam(self.netD.parameters(), lr=0.005, betas=(0.5, 0.999))
-        optimizerG = optim.Adam(self.netG.parameters(), lr=0.005, betas=(0.5, 0.999))
+        optimizerD = optim.Adam(self.netD.parameters(), lr=0.001, betas=(0.5, 0.999))
+        optimizerG = optim.Adam(self.netG.parameters(), lr=0.001, betas=(0.5, 0.999))
         
         criterion = nn.BCELoss()  # Loss function
         
@@ -104,8 +104,7 @@ class GenGAN():
                 errD_real.backward()
                 
                 # Train with fake images
-                noise = torch.randn(batch_size, Skeleton.reduced_dim, 1, 1, device=device)
-                fake_images = self.netG(noise)
+                fake_images = self.netG(data[0].to(device))
                 label.fill_(self.fake_label)
                 
                 output = self.netD(fake_images.detach()).view(-1)
@@ -176,16 +175,16 @@ if __name__ == '__main__':
     if True:    # train or load
         # Train
         gen = GenGAN(targetVideoSke, False)
-        gen.train(20) #5) #200)
+        gen.train(100) #5) #200)
     else:
         gen = GenGAN(targetVideoSke, loadFromFile=True)    # load from file        
 
 
-    for i in range(targetVideoSke.skeCount()):
-        image = gen.generate(targetVideoSke.ske[i])
-        #image = image*255
-        nouvelle_taille = (256, 256) 
-        image = cv2.resize(image, nouvelle_taille)
-        cv2.imshow('Image', image)
-        key = cv2.waitKey(-1)
+    # for i in range(targetVideoSke.skeCount()):
+    #     image = gen.generate(targetVideoSke.ske[i])
+    #     #image = image*255
+    #     nouvelle_taille = (256, 256) 
+    #     image = cv2.resize(image, nouvelle_taille)
+    #     cv2.imshow('Image', image)
+    #     key = cv2.waitKey(-1)
 
