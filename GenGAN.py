@@ -58,6 +58,7 @@ class GenGAN():
         self.netD = Discriminator()
         self.real_label = 1.
         self.fake_label = 0.
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.filename = 'data/Dance/DanceGenGAN.pth'
         tgt_transform = transforms.Compose(
                             [transforms.Resize((64, 64)),
@@ -70,7 +71,7 @@ class GenGAN():
         self.dataloader = torch.utils.data.DataLoader(dataset=self.dataset, batch_size=32, shuffle=True)
         if loadFromFile and os.path.isfile(self.filename):
             print("GenGAN: Load=", self.filename, "   Current Working Directory=", os.getcwd())
-            self.netG = torch.load(self.filename)
+            self.netG = torch.load(self.filename, map_location=self.device)
 
 
     def train(self, n_epochs=20):
@@ -79,11 +80,11 @@ class GenGAN():
         optimizerG = optim.Adam(self.netG.parameters(), lr=0.001, betas=(0.5, 0.999))
         
         criterion = nn.BCELoss()  # Loss function
+        MSE_loss = nn.MSELoss()  # Mean Squared Error loss
         
         # Move models to GPU if available
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.netG.to(device)
-        self.netD.to(device)
+        self.netG.to(self.device)
+        self.netD.to(self.device)
 
         # Training loop
         for epoch in range(n_epochs):
@@ -95,16 +96,17 @@ class GenGAN():
                 self.netD.zero_grad()
                 
                 # Train with real images
-                real_images = data[1].to(device)  # Get real images from dataloader
+                real_images = data[1].to(self.device)  # Get real images from dataloader
                 batch_size = real_images.size(0)
-                label = torch.full((batch_size,), self.real_label, device=device)
+                label = torch.full((batch_size,), self.real_label, device=self.device)
                 
                 output = self.netD(real_images).view(-1)
                 errD_real = criterion(output, label)
                 errD_real.backward()
                 
                 # Train with fake images
-                fake_images = self.netG(data[0].to(device))
+                # fake = torch.randn(batch_size, Skeleton.reduced_dim, 1, 1, device=device)
+                fake_images = self.netG(data[0].to(self.device))
                 label.fill_(self.fake_label)
                 
                 output = self.netD(fake_images.detach()).view(-1)
@@ -119,7 +121,10 @@ class GenGAN():
                 label.fill_(self.real_label)  # Fake labels are real for generator cost
                 
                 output = self.netD(fake_images).view(-1)
-                errG = criterion(output, label)
+                errG_adv  = criterion(output, label)
+                errG_mse = MSE_loss(fake_images, real_images)
+                
+                errG = errG_adv + 300*errG_mse
                 errG.backward()
                 optimizerG.step()
                 
