@@ -7,14 +7,6 @@
 [Allez voir le sujet du TP ici](http://alexandre.meyer.pages.univ-lyon1.fr/m2-apprentissage-profond-image/am/tp_dance/)
 
 
-# Objectif de ce code
-(Ce code est indépendant de tout le reste du dépôt)
-
-À partir d'une vidéo d'une personne source et d'une autre d'une personne, notre objectif est de générer une nouvelle vidéo de la cible effectuant les mêmes mouvements que la source. 
-
-[Allez voir le sujet du TP ici](http://alexandre.meyer.pages.univ-lyon1.fr/m2-apprentissage-profond-image/am/tp_dance/)
-
-
 First you need to generate the images and skeletons from the video you want using VideoSkeleton.py
 To launch the project you need to select an other video on DanceDemo.py and select the right Gentype depending on what you want.
 To close a video in process press ctrl+c on the terminal.
