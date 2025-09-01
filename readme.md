@@ -7,7 +7,7 @@ BONADA Nathan - LAURENT Clément
 
 [Allez voir le sujet du TP ici](http://alexandre.meyer.pages.univ-lyon1.fr/m2-apprentissage-profond-image/am/tp_dance/)
 
-
+# User Guide
 First you need to generate the images and skeletons from the video you want using VideoSkeleton.py
 To launch the project you need to select an other video on DanceDemo.py and select the right Gentype depending on what you want.
 To close a video in process press ctrl+c on the terminal.
